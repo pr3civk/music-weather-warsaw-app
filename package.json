@@ -1,0 +1,13 @@
+{
+  "name": "music-weather-warsaw-app",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "bun --filter @mw/backend dev",
+    "dev:frontend": "bun --filter @mw/frontend dev",
+    "seed": "bun --filter @mw/backend seed"
+  }
+}
