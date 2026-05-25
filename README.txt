@@ -118,7 +118,7 @@ KORELACJA PEARSONA
     Pogoda:  temperature, precipitation, cloud_cover, sunshine_last_hour
     Muzyka:  avg_valence, avg_energy, avg_tempo, avg_danceability
 
-  Interpretacja współczynnika r ∈ [-1, +1]:
+  Interpretacja współczynnika r ∈ [-1, 1]:
     |r| ≥ 0.7    silna korelacja
     0.4 ≤ |r| < 0.7   umiarkowana
     0.2 ≤ |r| < 0.4   słaba

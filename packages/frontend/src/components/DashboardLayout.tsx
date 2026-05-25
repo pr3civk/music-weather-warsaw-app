@@ -23,7 +23,7 @@ export function DashboardLayout() {
 
   return (
     <div className="grid grid-cols-[240px_1fr] min-h-screen">
-      <aside className="bg-sidebar border-r border-sidebar-border flex flex-col py-5">
+      <aside className="bg-sidebar border-r border-sidebar-border flex flex-col py-5 sticky top-0 h-screen">
         <div className="px-5 pb-5 border-b border-sidebar-border">
           <div className="font-semibold text-[15px] tracking-tight">MusicWeather</div>
           <div className="text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/60 mt-0.5">
