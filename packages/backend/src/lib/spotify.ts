@@ -1,6 +1,9 @@
 import { env } from '../env.js';
+import { CURATED_PL_TRACK_IDS } from './curatedTracks.js';
+import { fetchTracksMetadata } from './reccobeats.js';
 
 export const TOP_PL_PLAYLIST_ID = '37i9dQZEVXbN6itCcaL3Tt'; // Top 50 - Polska (Spotify editorial)
+const CURATED_FALLBACK_ID = 'reccobeats:curated:pl';
 
 type TokenCache = { token: string; expiresAt: number };
 let cache: TokenCache | null = null;
@@ -67,13 +70,31 @@ export async function getTopPL(playlistId = TOP_PL_PLAYLIST_ID): Promise<{ playl
       const m = mapTrack(item.track, i + 1);
       if (m) tracks.push(m);
     });
-    return { playlistId, tracks };
+    if (tracks.length > 0) return { playlistId, tracks };
+  } else if (res.status === 403) {
+    console.warn('[spotify] playlist 403 (editorial Premium-gated) — trying /search');
+    const fromSearch = await searchTopPL(token).catch(() => ({ playlistId: '', tracks: [] as SpotifyTrack[] }));
+    if (fromSearch.tracks.length > 0) return fromSearch;
+  } else {
+    console.warn(`[spotify] playlist failed: ${res.status} — falling back to curated`);
   }
-  if (res.status === 403) {
-    console.warn('[spotify] playlist 403 (editorial Premium-gated) — falling back to /search');
-    return await searchTopPL(token);
-  }
-  throw new Error(`spotify playlist failed: ${res.status} ${await res.text()}`);
+  console.warn('[spotify] all Spotify endpoints empty/blocked — using curated PL fallback via reccobeats');
+  return await curatedFallback();
+}
+
+async function curatedFallback(): Promise<{ playlistId: string; tracks: SpotifyTrack[] }> {
+  const metas = await fetchTracksMetadata(CURATED_PL_TRACK_IDS);
+  metas.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
+  const tracks: SpotifyTrack[] = metas.map((m, i) => ({
+    spotifyId: m.spotifyId,
+    name: m.title,
+    artist: m.artist,
+    album: null,
+    durationMs: m.durationMs,
+    popularity: m.popularity,
+    position: i + 1,
+  }));
+  return { playlistId: CURATED_FALLBACK_ID, tracks };
 }
 
 async function searchTopPL(token: string): Promise<{ playlistId: string; tracks: SpotifyTrack[] }> {

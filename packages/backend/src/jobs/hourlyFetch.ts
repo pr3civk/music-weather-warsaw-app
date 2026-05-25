@@ -48,13 +48,16 @@ export async function runHourlyFetch(): Promise<{
   }
 
   const existing = await db
-    .select({ id: hourlyAggregates.id })
+    .select({ id: hourlyAggregates.id, trackCount: hourlyAggregates.trackCount })
     .from(hourlyAggregates)
     .where(eq(hourlyAggregates.hour, capturedAt))
     .limit(1);
-  if (existing.length > 0) {
-    console.log(`[cron] skip ${capturedAt.toISOString()} (already aggregated)`);
+  if (existing.length > 0 && (existing[0]?.trackCount ?? 0) > 0) {
+    console.log(`[cron] skip ${capturedAt.toISOString()} (already aggregated, tracks=${existing[0]?.trackCount})`);
     return { capturedAt, skipped: true };
+  }
+  if (existing.length > 0) {
+    console.log(`[cron] retry ${capturedAt.toISOString()} (previous attempt had 0 tracks)`);
   }
 
   const [weather, spotify] = await Promise.all([

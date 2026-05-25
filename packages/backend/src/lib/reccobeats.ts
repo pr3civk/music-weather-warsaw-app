@@ -53,10 +53,64 @@ async function lookupBatch(spotifyIds: string[], out: Map<string, string>) {
     content?: Array<{ id: string; href?: string }>;
   };
   for (const t of data.content ?? []) {
-    // href format: https://api.spotify.com/v1/tracks/{spotifyId}
+    // href format: https://open.spotify.com/track/{spotifyId}
     const spId = t.href?.split('/').pop();
     if (spId) out.set(spId, t.id);
   }
+}
+
+export type TrackMetadata = {
+  spotifyId: string;
+  reccoId: string;
+  title: string;
+  artist: string;
+  durationMs: number | null;
+  popularity: number | null;
+};
+
+type ReccoTrackRaw = {
+  id: string;
+  trackTitle?: string;
+  artists?: Array<{ name?: string }>;
+  durationMs?: number;
+  popularity?: number;
+  href?: string;
+  availableCountries?: string;
+};
+
+export async function fetchTracksMetadata(
+  spotifyIds: string[]
+): Promise<TrackMetadata[]> {
+  const out: TrackMetadata[] = [];
+  if (spotifyIds.length === 0) return out;
+  const chunks: string[][] = [];
+  for (let i = 0; i < spotifyIds.length; i += BATCH_SIZE) {
+    chunks.push(spotifyIds.slice(i, i + BATCH_SIZE));
+  }
+  for (const chunk of chunks) {
+    try {
+      const params = chunk.map((id) => `ids=${encodeURIComponent(id)}`).join('&');
+      const res = await fetch(`${BASE}/track?${params}`);
+      if (!res.ok) throw new Error(`reccobeats metadata failed: ${res.status}`);
+      const data = (await res.json()) as { content?: ReccoTrackRaw[] };
+      for (const t of data.content ?? []) {
+        const spId = t.href?.split('/').pop();
+        if (!spId || !t.id) continue;
+        out.push({
+          spotifyId: spId,
+          reccoId: t.id,
+          title: t.trackTitle ?? 'Unknown',
+          artist: t.artists?.map((a) => a.name).filter(Boolean).join(', ') || 'Unknown',
+          durationMs: t.durationMs ?? null,
+          popularity: t.popularity ?? null,
+        });
+      }
+    } catch (e) {
+      console.warn('[reccobeats] metadata batch failed:', e);
+    }
+    await sleep(200);
+  }
+  return out;
 }
 
 async function fetchFeatures(reccoId: string): Promise<AudioFeatures | null> {
