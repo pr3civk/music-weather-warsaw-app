@@ -1,25 +1,31 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PasswordInput } from '@/components/PasswordInput';
+import { useState, type SubmitEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const m = useMutation({
     mutationFn: () => login({ email, password }),
-    onSuccess: () => nav('/dashboard'),
+    onSuccess: () => nav("/dashboard"),
   });
 
-  function onSubmit(e: FormEvent) {
+  function onSubmit(e: SubmitEvent) {
     e.preventDefault();
     m.mutate();
   }
@@ -29,7 +35,9 @@ export function Login() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>Access your MusicWeather Warsaw dashboard.</CardDescription>
+          <CardDescription>
+            Access your MusicWeather Warsaw dashboard.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -60,10 +68,10 @@ export function Login() {
               />
             </div>
             <Button type="submit" disabled={m.isPending} className="w-full">
-              {m.isPending ? 'Signing in…' : 'Sign in'}
+              {m.isPending ? "Signing in…" : "Sign in"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              No account?{' '}
+              No account?{" "}
               <Link to="/register" className="text-primary hover:underline">
                 Register
               </Link>

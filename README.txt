@@ -176,4 +176,4 @@ URUCHOMIENIE LOKALNE (bez Dockera)
 -------------
 
   Pogoda:  Open-Meteo Forecast API (https://open-meteo.com) — darmowe, bez klucza
-  Muzyka:  Spotify Web API + ReccoBeats API (https://reccobeats.com) — oba free
+  Muzyka:  Spotify Web API

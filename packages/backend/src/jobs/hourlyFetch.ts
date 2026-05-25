@@ -1,40 +1,49 @@
-import cron from 'node-cron';
-import { eq, sql } from 'drizzle-orm';
-import { db } from '../db/client.js';
+import cron from "node-cron";
+import { eq, sql } from "drizzle-orm";
+import { db } from "../db/client.js";
 import {
   weatherSnapshots,
   spotifySnapshots,
   snapshotTracks,
   tracks,
   hourlyAggregates,
-} from '../db/schema.js';
-import { fetchCurrentWeather } from '../lib/openMeteo.js';
-import { getTopPL, TOP_PL_PLAYLIST_ID } from '../lib/spotify.js';
-import { fetchAudioFeaturesBySpotifyIds } from '../lib/reccobeats.js';
-import { startOfHourWarsaw } from '../lib/time.js';
-import { env } from '../env.js';
+} from "../db/schema.js";
+import { fetchCurrentWeather } from "../lib/openMeteo.js";
+import { getTopPL, TOP_PL_PLAYLIST_ID } from "../lib/spotify.js";
+import { fetchAudioFeaturesBySpotifyIds } from "../lib/reccobeats.js";
+import { startOfHourWarsaw } from "../lib/time.js";
+import { env } from "../env.js";
 
 function hasRealSpotifyCreds(): boolean {
   return (
     !!env.SPOTIFY_CLIENT_ID &&
-    !env.SPOTIFY_CLIENT_ID.startsWith('your_') &&
+    !env.SPOTIFY_CLIENT_ID.startsWith("your_") &&
     !!env.SPOTIFY_CLIENT_SECRET &&
-    !env.SPOTIFY_CLIENT_SECRET.startsWith('your_')
+    !env.SPOTIFY_CLIENT_SECRET.startsWith("your_")
   );
 }
 
 export function startCronJobs() {
-  cron.schedule('0 * * * *', () => {
-    runHourlyFetch().catch((e) => console.error('[cron] run failed', e));
-  }, { timezone: 'Europe/Warsaw' });
+  cron.schedule(
+    "0 * * * *",
+    () => {
+      runHourlyFetch().catch((e) => console.error("[cron] run failed", e));
+    },
+    { timezone: "Europe/Warsaw" },
+  );
   console.log('[cron] scheduled "0 * * * *" Europe/Warsaw');
 }
 
-export async function runHourlyFetch(): Promise<{ capturedAt: Date; skipped: boolean }> {
+export async function runHourlyFetch(): Promise<{
+  capturedAt: Date;
+  skipped: boolean;
+}> {
   const capturedAt = startOfHourWarsaw();
 
   if (!hasRealSpotifyCreds()) {
-    console.log('[cron] skip — SPOTIFY_CLIENT_ID/SECRET are placeholders, fill .env to enable');
+    console.log(
+      "[cron] skip — SPOTIFY_CLIENT_ID/SECRET are placeholders, fill .env to enable",
+    );
     return { capturedAt, skipped: true };
   }
 
@@ -48,27 +57,50 @@ export async function runHourlyFetch(): Promise<{ capturedAt: Date; skipped: boo
     return { capturedAt, skipped: true };
   }
 
-  const [weather, spotify] = await Promise.all([fetchCurrentWeather(), getTopPL()]);
+  const [weather, spotify] = await Promise.all([
+    fetchCurrentWeather(),
+    getTopPL(),
+  ]);
 
-  // Determine which tracks need features pulled
   const spotifyIds = spotify.tracks.map((t) => t.spotifyId);
   const existingTracks = spotifyIds.length
     ? await db
-        .select({ spotifyId: tracks.spotifyId, featuresLoadedAt: tracks.featuresLoadedAt })
+        .select({
+          spotifyId: tracks.spotifyId,
+          featuresLoadedAt: tracks.featuresLoadedAt,
+        })
         .from(tracks)
-        .where(sql`${tracks.spotifyId} IN (${sql.join(spotifyIds.map((id) => sql`${id}`), sql`, `)})`)
+        .where(
+          sql`${tracks.spotifyId} IN (${sql.join(
+            spotifyIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        )
     : [];
   const haveFeatures = new Set(
-    existingTracks.filter((t) => t.featuresLoadedAt !== null).map((t) => t.spotifyId)
+    existingTracks
+      .filter((t) => t.featuresLoadedAt !== null)
+      .map((t) => t.spotifyId),
   );
   const needFeatures = spotifyIds.filter((id) => !haveFeatures.has(id));
 
-  let featuresMap = new Map<string, Awaited<ReturnType<typeof fetchAudioFeaturesBySpotifyIds>> extends Map<string, infer V> ? V : never>();
+  let featuresMap = new Map<
+    string,
+    Awaited<ReturnType<typeof fetchAudioFeaturesBySpotifyIds>> extends Map<
+      string,
+      infer V
+    >
+      ? V
+      : never
+  >();
   if (needFeatures.length > 0) {
     try {
       featuresMap = await fetchAudioFeaturesBySpotifyIds(needFeatures);
     } catch (e) {
-      console.warn('[cron] reccobeats batch failed, continuing without features:', e);
+      console.warn(
+        "[cron] reccobeats batch failed, continuing without features:",
+        e,
+      );
     }
   }
 
@@ -105,7 +137,7 @@ export async function runHourlyFetch(): Promise<{ capturedAt: Date; skipped: boo
         .limit(1);
       snapshotId = row?.id;
     }
-    if (!snapshotId) throw new Error('snapshot id missing');
+    if (!snapshotId) throw new Error("snapshot id missing");
 
     for (const t of spotify.tracks) {
       const f = featuresMap.get(t.spotifyId);
@@ -223,7 +255,7 @@ export async function runHourlyFetch(): Promise<{ capturedAt: Date; skipped: boo
   });
 
   console.log(
-    `[cron] ✓ ${capturedAt.toISOString()} | temp: ${weather.temperature}°C | tracks: ${spotify.tracks.length}`
+    `[cron] ✓ ${capturedAt.toISOString()} | temp: ${weather.temperature}°C | tracks: ${spotify.tracks.length}`,
   );
   return { capturedAt, skipped: false };
 }
