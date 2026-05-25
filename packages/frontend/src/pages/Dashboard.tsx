@@ -1,7 +1,9 @@
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { NowWidget } from '@/components/NowWidget';
 import { DualLineChart } from '@/components/DualLineChart';
 import { NowWidgetSkeleton, ChartSkeleton } from '@/components/skeletons';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const WEATHER_COLOR = {
   temperature: 'oklch(0.70 0.17 50)',
@@ -81,7 +83,16 @@ const PAIRS = [
   },
 ];
 
+const RANGES = [
+  { label: '24h', hours: 24 },
+  { label: '48h', hours: 48 },
+  { label: '7d', hours: 24 * 7 },
+  { label: '30d', hours: 24 * 30 },
+] as const;
+
 export function Dashboard() {
+  const [hours, setHours] = useState<number>(48);
+
   return (
     <div className="space-y-6">
       <header>
@@ -94,18 +105,44 @@ export function Dashboard() {
       </Suspense>
 
       <div>
-        <h2 className="text-lg font-semibold tracking-tight mb-1">Weather ↔ Music (last 48h)</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Sześć par metryk pogoda × muzyka. Linie pomarańczowe/cyan = pogoda (lewa oś), fioletowe = muzyka (prawa oś).
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight mb-1">Weather ↔ Music</h2>
+            <p className="text-sm text-muted-foreground">
+              Sześć par metryk pogoda × muzyka. Linie pomarańczowe/cyan = pogoda (lewa oś), fioletowe = muzyka (prawa oś).
+            </p>
+          </div>
+          <RangePicker value={hours} onChange={setHours} />
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {PAIRS.map((p) => (
-            <Suspense key={p.title} fallback={<ChartSkeleton />}>
-              <DualLineChart title={p.title} pair={p.pair} />
+            <Suspense key={`${p.title}:${hours}`} fallback={<ChartSkeleton />}>
+              <DualLineChart title={p.title} pair={p.pair} hours={hours} />
             </Suspense>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function RangePicker({ value, onChange }: { value: number; onChange: (h: number) => void }) {
+  return (
+    <div className="inline-flex rounded-md border border-border p-0.5 bg-card">
+      {RANGES.map((r) => (
+        <Button
+          key={r.label}
+          size="sm"
+          variant="ghost"
+          className={cn(
+            'h-7 px-3 text-xs font-medium',
+            value === r.hours && 'bg-muted text-foreground',
+          )}
+          onClick={() => onChange(r.hours)}
+        >
+          {r.label}
+        </Button>
+      ))}
     </div>
   );
 }

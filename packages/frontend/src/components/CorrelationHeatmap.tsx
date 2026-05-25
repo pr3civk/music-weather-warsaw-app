@@ -1,7 +1,10 @@
+import { useMemo } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { queries } from '@/api/queries';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { startOfHourMinusIso } from '@/lib/time';
 
 const WEATHER_LABELS: Record<string, string> = {
   temperature: 'Temperature',
@@ -39,8 +42,15 @@ function cellStyle(r: number): React.CSSProperties {
   return { background: `oklch(0.65 ${0.18 * intensity} 50 / ${0.15 + 0.6 * intensity})` };
 }
 
-export function CorrelationHeatmap() {
-  const { data } = useSuspenseQuery(queries.correlation());
+type Props = {
+  hours?: number;
+  highlightWeather?: string;
+  highlightMusic?: string;
+};
+
+export function CorrelationHeatmap({ hours = 0, highlightWeather = '', highlightMusic = '' }: Props = {}) {
+  const fromIso = useMemo(() => (hours > 0 ? startOfHourMinusIso(hours) : undefined), [hours]);
+  const { data } = useSuspenseQuery(queries.correlation(fromIso));
 
   if (data.warning) {
     return (
@@ -92,10 +102,21 @@ export function CorrelationHeatmap() {
                     {MUSIC_KEYS.map((mk) => {
                       const r = matrixByKey.get(`${wk}|${mk}`);
                       if (!r) return <td key={mk} />;
+                      const dim =
+                        (highlightWeather && highlightWeather !== wk) ||
+                        (highlightMusic && highlightMusic !== mk);
+                      const focus =
+                        (highlightWeather === wk || highlightMusic === mk) &&
+                        !(highlightWeather && highlightWeather !== wk) &&
+                        !(highlightMusic && highlightMusic !== mk);
                       return (
                         <td key={mk} className="p-1">
                           <div
-                            className="rounded-md p-3 border border-border/50 text-center"
+                            className={cn(
+                              'rounded-md p-3 border border-border/50 text-center transition-opacity',
+                              dim && 'opacity-25',
+                              focus && 'ring-2 ring-primary border-primary',
+                            )}
                             style={cellStyle(r.r)}
                           >
                             <div className="text-base font-semibold">{r.r.toFixed(2)}</div>

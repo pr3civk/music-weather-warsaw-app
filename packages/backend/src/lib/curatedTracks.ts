@@ -1,7 +1,4 @@
-// Curated fallback list of popular Spotify track IDs available in PL.
-// Used when Spotify's editorial-playlist and search endpoints return 403
-// (post-May 2026 restriction on client-credentials apps).
-// All IDs verified against reccobeats (availableCountries includes "PL", popularity >= 60).
+
 export const CURATED_PL_TRACK_IDS: string[] = [
   '2plbrEY59IikOBgBGLjaoe', // Lady Gaga - Die With A Smile
   '2QjOHCTQ1Jl3zawyYOpxh6', // The Neighbourhood - Sweater Weather

@@ -8,17 +8,33 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { fmtNum } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { startOfHourMinusIso } from '@/lib/time';
 
 type SortKey = 'avgPosition' | 'valence' | 'energy' | 'tempo' | 'danceability' | 'popularity';
 
-export function TrackTable() {
-  const { data } = useSuspenseQuery(queries.music(undefined, undefined, 50));
+type Props = {
+  hours?: number;
+  query?: string;
+  minPopularity?: number;
+};
+
+export function TrackTable({ hours = 48, query = '', minPopularity = 0 }: Props = {}) {
+  const fromIso = useMemo(() => startOfHourMinusIso(hours), [hours]);
+  const { data } = useSuspenseQuery(queries.music(fromIso, undefined, 200));
   const [sort, setSort] = useState<SortKey>('avgPosition');
   const [asc, setAsc] = useState(true);
 
   const rows = useMemo(() => {
-    const copy = [...data];
-    copy.sort((a, b) => {
+    const q = query.trim().toLowerCase();
+    const filtered = data.filter((t) => {
+      if (minPopularity > 0 && (t.popularity ?? 0) < minPopularity) return false;
+      if (q) {
+        const hay = `${t.name} ${t.artist}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    filtered.sort((a, b) => {
       const va = a[sort];
       const vb = b[sort];
       if (va == null && vb == null) return 0;
@@ -26,8 +42,8 @@ export function TrackTable() {
       if (vb == null) return -1;
       return asc ? (va as number) - (vb as number) : (vb as number) - (va as number);
     });
-    return copy;
-  }, [data, sort, asc]);
+    return filtered;
+  }, [data, sort, asc, query, minPopularity]);
 
   function toggle(k: SortKey) {
     if (k === sort) setAsc(!asc);
@@ -40,8 +56,8 @@ export function TrackTable() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Top tracks (last 48h)</CardTitle>
-        <CardDescription>Sorted by appearance frequency. Click any audio-feature column to sort.</CardDescription>
+        <CardTitle className="text-base">Top tracks ({rows.length} {rows.length === 1 ? 'match' : 'matches'})</CardTitle>
+        <CardDescription>Click any column header to sort. Filters apply client-side.</CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>
